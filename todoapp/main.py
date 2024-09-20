@@ -3,13 +3,16 @@ from database import engine, get_db
 import models
 import routers
 from models import Todos, User
-from routers import auth, todos
+from routers import auth, todos, admin, users
+
 from starlette_admin.contrib.sqla import Admin, ModelView # type: ignore
 
 
 app = FastAPI()
 app.include_router(auth.router)
 app.include_router(todos.router)
+app.include_router(admin.router)
+app.include_router(users.router)
 
 admin = Admin(engine, title="Todo App")
 
