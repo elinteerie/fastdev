@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Path
 from typing import Annotated
 from pydantic import BaseModel, Field
-from models import Todos
+from sqlmodel import Session, select
+from models import Todos, TodoRequest, TodoReponse
 from database import get_db
 from sqlalchemy.orm import Session
 from .auth import get_current_user
+
 
 router = APIRouter(tags=['Todos'])
 
@@ -12,27 +14,6 @@ router = APIRouter(tags=['Todos'])
 db_dependency = Annotated[Session, Depends(get_db)]
 user_dependency = Annotated[dict, Depends(get_current_user)]
 
-class TodoReponse(BaseModel):
-    id: int 
-    title: str 
-    description: str 
-    priority: int 
-    completed: bool
-
-class TodoRequest(BaseModel):
-    title: str = Field(min_length=4)
-    description: str = Field(min_length=7)
-    priority: int  = Field(gt=0, lt=6)
-
-    model_config = {
-        "json_schema_extra":{
-            'example':{
-                "title": "Coding on Monday",
-                "description": "Fixing a Bug on Juggy",
-                "priority": 3
-            }
-        }
-    }
 
 
 class TodoChangeRequest(BaseModel):
@@ -58,7 +39,10 @@ class TodoChangeRequest(BaseModel):
 async def get_all_todos(user: user_dependency, db: db_dependency):
     if user is None:
         raise HTTPException(status_code=401, detail="Authentification Failed")
-    return  db.query(Todos).filter(Todos.owner_id == user.get('id')).all()
+    
+    todos = db.exec(select(Todos).where(Todos.owner_id== user.get('id'))).all()  # Query all Todos
+        
+    return  todos
     
 
 
@@ -69,7 +53,7 @@ async def get_a_todos(user: user_dependency,db: db_dependency, todo_id: int = Pa
     if user is None:
         raise HTTPException(status_code=401, detail="Authentification Failed")
     
-    a_todos = db.query(Todos).filter(Todos.id == todo_id).filter(Todos.owner_id==user.get('id')).first()
+    a_todos = db.exec(select(Todos).where(Todos.id == todo_id).where(Todos.owner_id == user.get('id'))).first()
     if a_todos is not None:
         return {
         "status": "OK",
